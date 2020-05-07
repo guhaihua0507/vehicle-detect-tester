@@ -6,13 +6,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -68,14 +71,15 @@ public class TestVehicle {
             return;
         }
 
-        File[] files = new File(picDir).listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.endsWith("jpg");
-            }
-        });
+//        File[] files = new File(picDir).listFiles(new FilenameFilter() {
+//            @Override
+//            public boolean accept(File dir, String name) {
+//                return name.endsWith("jpg");
+//            }
+//        });
+        List<File> files = listFilesRecursively(new File(picDir));
 
-        if (files == null || files.length == 0) {
+        if (files == null || files.size() == 0) {
             return;
         }
 
@@ -86,9 +90,9 @@ public class TestVehicle {
         ExecutorService es = Executors.newFixedThreadPool(nThread);
 
         for (int t = 0; t < loop; t++) {
-            for (int i = 0; i < files.length; i++) {
+            for (int i = 0; i < files.size(); i++) {
                 totalImages++;
-                File f = files[i];
+                File f = files.get(i);
                 int cur = t;
                 es.execute(() -> {
                     System.out.println("sending file " + f.getName());
@@ -131,6 +135,28 @@ public class TestVehicle {
         System.out.println("总图片数量:      " + totalImages);
         System.out.println("错误图片数量:      " + errorImages.get());
         System.out.println("每秒处理图片:     " + imagesPerSec);
+    }
+
+    private static List<File> listFilesRecursively(File dir) {
+        List<File> fileList = new ArrayList<>();
+        File[] files = dir.listFiles(pathname -> {
+            if (pathname.isDirectory()) {
+                return true;
+            } else {
+                return pathname.getName().endsWith(".jpg");
+            }
+        });
+
+        if (files != null && files.length > 0) {
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    fileList.addAll(listFilesRecursively(f));
+                } else {
+                    fileList.add(f);
+                }
+            }
+        }
+        return fileList;
     }
 
     private static void printUsage() {
