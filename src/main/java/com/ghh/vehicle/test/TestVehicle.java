@@ -1,14 +1,14 @@
 package com.ghh.vehicle.test;
 
 import cn.hutool.http.HttpUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -17,7 +17,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -85,6 +84,7 @@ public class TestVehicle {
 
         errorImages.set(0);
         long totalImages = 0L;
+        AtomicInteger successImages = new AtomicInteger(0);
         Date startTime = new Date();
 
         ExecutorService es = Executors.newFixedThreadPool(nThread);
@@ -105,6 +105,9 @@ public class TestVehicle {
                             map.put("TPMC", f.getName());
                         }
                         String response = HttpUtil.post(url, map);
+                        if (isSuccessRequest(response)) {
+                            successImages.incrementAndGet();
+                        }
                         if (outputFilePath != null) {
                             try (OutputStream fout = new FileOutputStream(outputFilePath.getAbsolutePath() + File.separator + f.getName() + "_" + cur + ".json")) {
                                 fout.write(response.getBytes("UTF-8"));
@@ -135,6 +138,20 @@ public class TestVehicle {
         System.out.println("总图片数量:      " + totalImages);
         System.out.println("错误图片数量:      " + errorImages.get());
         System.out.println("每秒处理图片:     " + imagesPerSec);
+        System.out.println("成功返回结果数量:   " + successImages.get());
+    }
+
+    private static boolean isSuccessRequest(String response) {
+        try {
+            JSONObject json = JSONUtil.parseObj(response);
+            Integer code = json.getInt("CODE");
+            if (Integer.valueOf(0).equals(code)) {
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static List<File> listFilesRecursively(File dir) {
