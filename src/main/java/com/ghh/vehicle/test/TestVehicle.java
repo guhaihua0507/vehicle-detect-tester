@@ -132,6 +132,7 @@ public class TestVehicle {
          */
         long elapseTime = endTime.getTime() - startTime.getTime();
         long imagesPerSec = totalImages * 1000 / elapseTime;
+        long successPerSec = successImages.get() * 1000 / elapseTime;
         System.out.println("开始时间:       " + DateFormatUtils.format(startTime, "yyyy-MM-dd HH:mm:ss"));
         System.out.println("结束时间:       " + DateFormatUtils.format(endTime, "yyyy-MM-dd HH:mm:ss"));
         System.out.println("经过时间:       " + elapseTime + "毫秒");
@@ -139,6 +140,7 @@ public class TestVehicle {
         System.out.println("错误图片数量:      " + errorImages.get());
         System.out.println("每秒处理图片:     " + imagesPerSec);
         System.out.println("成功返回结果数量:   " + successImages.get());
+        System.out.println("每秒成功处理图片:   " + successPerSec);
     }
 
     private static boolean isSuccessRequest(String response) {
