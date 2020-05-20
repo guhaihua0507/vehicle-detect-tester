@@ -105,6 +105,10 @@ public class TestVehicle {
                             map.put("TPMC", f.getName());
                         }
                         String response = HttpUtil.post(url, map);
+
+                        map.clear();
+                        map = null;
+
                         if (isSuccessRequest(response)) {
                             successImages.incrementAndGet();
                         }
@@ -162,7 +166,7 @@ public class TestVehicle {
             if (pathname.isDirectory()) {
                 return true;
             } else {
-                return pathname.getName().endsWith(".jpg");
+                return pathname.getName().toLowerCase().endsWith(".jpg");
             }
         });
 
