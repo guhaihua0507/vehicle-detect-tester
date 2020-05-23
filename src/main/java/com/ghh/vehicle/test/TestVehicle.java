@@ -38,6 +38,8 @@ public class TestVehicle {
         String picDir = params.get("picDir");
         String outputDir = params.get("outputDir");
         Boolean sendName = Boolean.valueOf(Optional.ofNullable(params.get("sendName")).orElse("false"));
+        String type = params.get("type");
+
         int loop = Integer.valueOf(Optional.ofNullable(params.get("loop")).orElse("1"));
         if (url == null) {
             System.out.println("必须输入url");
@@ -99,7 +101,11 @@ public class TestVehicle {
                         Map<String, Object> map = new HashMap<>();
                         map.put("GCXH", "111111");
                         map.put("TPLX", "1");
-                        map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
+                        if ("file".equals(type)) {
+                            map.put("TPWJ", f);
+                        } else {
+                            map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
+                        }
                         if (sendName == true) {
                             map.put("TPMC", f.getName());
                         }
