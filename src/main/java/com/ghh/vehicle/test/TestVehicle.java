@@ -27,7 +27,6 @@ import java.util.regex.Pattern;
 
 /**
  * Hello world!
- *
  */
 public class TestVehicle {
     private static AtomicInteger errorImages = new AtomicInteger(0);
@@ -125,7 +124,7 @@ public class TestVehicle {
             }
         }
         es.shutdown();
-        while(!es.awaitTermination(1, TimeUnit.SECONDS)) {
+        while (!es.awaitTermination(1, TimeUnit.SECONDS)) {
         }
         System.out.println("执行完成");
 
