@@ -189,14 +189,15 @@ public class TestVehicle {
 
     private static void printUsage() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage:   java -cp ./* com.ghh.vehicle.test.TestVehicle -url=http://localhost:8080/detect -thread=3 -picDir=/pic -outputDir=/output -loop=1 -sendName=true");
+        sb.append("Usage:   java -cp ./* com.ghh.vehicle.test.TestVehicle -url=http://localhost:8080/detect -thread=3 -picDir=/pic -outputDir=/output -loop=1 -sendName=true -type=file");
         sb.append("\nurl:           必须，接口地址");
         sb.append("\nthread:        必须，启动的线程数");
         sb.append("\npicDir:        必须，图片目录");
         sb.append("\noutputDir:     结果输出目录，不传则不输出文件");
         sb.append("\nloop:          循环次数，默认为1");
         sb.append("\nsendName:      是否发送图片名称，值为true|false, 默认为false");
-        sb.append("\n\nExample: java -cp ./* com.ghh.vehicle.test.TestVehicle -url=http://localhost:8080/detect -thread=3 -picDir=/pic -outputDir=/output -loop=1 -sendName=false");
+        sb.append("\ntype:          发送图片方式: file, string（默认）");
+        sb.append("\n\nExample: java -cp ./* com.ghh.vehicle.test.TestVehicle -url=http://localhost:8080/detect -thread=3 -picDir=/pic -outputDir=/output -loop=1 -sendName=false -type=file");
         System.out.println(sb);
     }
 
