@@ -6,6 +6,15 @@ import cn.hutool.json.JSONUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -89,28 +98,35 @@ public class TestVehicle {
         Date startTime = new Date();
 
         ExecutorService es = Executors.newFixedThreadPool(nThread);
-
+        System.out.println("正在执行，请稍后...");
         for (int t = 0; t < loop; t++) {
             for (int i = 0; i < files.size(); i++) {
                 totalImages++;
                 File f = files.get(i);
                 int cur = t;
                 es.execute(() -> {
-                    System.out.println("sending file " + f.getName());
+//                    System.out.println("sending file " + f.getName());
                     try {
                         Map<String, Object> map = new HashMap<>();
                         map.put("GCXH", "111111");
                         map.put("TPLX", "1");
-                        if ("file".equals(type)) {
-                            map.put("TPWJ", f);
-                        } else {
-                            map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
-                        }
                         if (sendName == true) {
                             map.put("TPMC", f.getName());
                         }
-                        String response = HttpUtil.post(url, map);
+//                        if ("file".equals(type)) {
+//                            map.put("TPWJ", f);
+//                        } else {
+//                            map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
+//                        }
 
+                        String response = null;
+                        if ("file".equals(type)) {
+                            map.put("TPWJ", f);
+                            response = postFile(url, map);
+                        } else {
+                            map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
+                            response = HttpUtil.post(url, map);
+                        }
                         map.clear();
                         map = null;
 
@@ -150,6 +166,25 @@ public class TestVehicle {
         System.out.println("每秒处理图片:     " + imagesPerSec);
         System.out.println("成功返回结果数量:   " + successImages.get());
         System.out.println("每秒成功处理图片:   " + successPerSec);
+    }
+
+    private static String postFile(String url, Map<String, Object> data) throws IOException {
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+        HttpPost post = new HttpPost(url);
+
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            if (entry.getValue() instanceof File) {
+                builder.addBinaryBody(entry.getKey(), (File) entry.getValue());
+            } else {
+                builder.addTextBody(entry.getKey(), String.valueOf(entry.getValue()));
+            }
+        }
+
+        post.setEntity(builder.build());
+
+        CloseableHttpResponse response = httpclient.execute(post);
+        return EntityUtils.toString(response.getEntity());
     }
 
     private static boolean isSuccessRequest(String response) {
