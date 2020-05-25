@@ -39,6 +39,7 @@ import java.util.regex.Pattern;
  */
 public class TestVehicle {
     private static AtomicInteger errorImages = new AtomicInteger(0);
+    private static CloseableHttpClient httpclient = HttpClients.createDefault();
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Map<String, String> params = parseParams(args);
@@ -122,7 +123,8 @@ public class TestVehicle {
                         String response = null;
                         if ("file".equals(type)) {
                             map.put("TPWJ", f);
-                            response = postFile(url, map);
+//                            response = postFile(url, map);
+                            response = HttpUtil.post(url, map);
                         } else {
                             map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
                             response = HttpUtil.post(url, map);
@@ -132,10 +134,14 @@ public class TestVehicle {
 
                         if (isSuccessRequest(response)) {
                             successImages.incrementAndGet();
+                        } else {
+                            errorImages.incrementAndGet();
                         }
                         if (outputFilePath != null) {
                             try (OutputStream fout = new FileOutputStream(outputFilePath.getAbsolutePath() + File.separator + f.getName() + "_" + cur + ".json")) {
                                 fout.write(response.getBytes("UTF-8"));
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
                             }
                         }
                     } catch (Exception e) {
@@ -169,22 +175,25 @@ public class TestVehicle {
     }
 
     private static String postFile(String url, Map<String, Object> data) throws IOException {
-        CloseableHttpClient httpclient = HttpClients.createDefault();
         HttpPost post = new HttpPost(url);
-
-        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            if (entry.getValue() instanceof File) {
-                builder.addBinaryBody(entry.getKey(), (File) entry.getValue());
-            } else {
-                builder.addTextBody(entry.getKey(), String.valueOf(entry.getValue()));
+        try {
+            post.addHeader("Connection", "close");
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                if (entry.getValue() instanceof File) {
+                    builder.addBinaryBody(entry.getKey(), (File) entry.getValue());
+                } else {
+                    builder.addTextBody(entry.getKey(), String.valueOf(entry.getValue()));
+                }
             }
+
+            post.setEntity(builder.build());
+
+            CloseableHttpResponse response = httpclient.execute(post);
+            return EntityUtils.toString(response.getEntity());
+        } finally {
+            post.releaseConnection();
         }
-
-        post.setEntity(builder.build());
-
-        CloseableHttpResponse response = httpclient.execute(post);
-        return EntityUtils.toString(response.getEntity());
     }
 
     private static boolean isSuccessRequest(String response) {
@@ -192,9 +201,10 @@ public class TestVehicle {
             JSONObject json = JSONUtil.parseObj(response);
             Integer code = json.getInt("CODE");
             if (Integer.valueOf(0).equals(code)) {
+                return true;
+            } else {
                 return false;
             }
-            return true;
         } catch (Exception e) {
             return false;
         }
