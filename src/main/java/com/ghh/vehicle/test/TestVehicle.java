@@ -200,7 +200,7 @@ public class TestVehicle {
         try {
             JSONObject json = JSONUtil.parseObj(response);
             Integer code = json.getInt("CODE");
-            if (Integer.valueOf(0).equals(code)) {
+            if (Integer.valueOf(1).equals(code)) {
                 return true;
             } else {
                 return false;
