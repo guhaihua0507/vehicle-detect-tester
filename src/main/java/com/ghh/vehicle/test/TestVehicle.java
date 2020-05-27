@@ -134,6 +134,7 @@ public class TestVehicle {
                             successImages.incrementAndGet();
                         } else {
                             errorImages.incrementAndGet();
+                            System.out.println("error image:" + f.getName());
                         }
                         if (outputFilePath != null) {
                             try (OutputStream fout = new FileOutputStream(outputFilePath.getAbsolutePath() + File.separator + f.getName() + "_" + cur + ".json")) {
@@ -144,6 +145,7 @@ public class TestVehicle {
                         }
                     } catch (Exception e) {
                         errorImages.incrementAndGet();
+                        System.out.println("error image:" + f.getName());
                         e.printStackTrace();
                     }
                 });
