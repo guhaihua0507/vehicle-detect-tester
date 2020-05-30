@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -36,39 +35,20 @@ import java.util.regex.Pattern;
 /**
  * Hello world!
  */
-public class TestVehicle {
-    private AtomicInteger errorImages = new AtomicInteger(0);
-    private CloseableHttpClient httpclient = HttpClients.createDefault();
-    private LinkedBlockingQueue<FileWrap> filesQueue = new LinkedBlockingQueue<>(1000);
-
-    private boolean sendName = false;
-    private String url;
-    private Integer nThread;
-    private String picDir;
-    private String outputDir;
-    private String type;
-    private int loop = 1;
-    private File outputFilePath;
-
-    private long totalImages = 0L;
-    private AtomicInteger successImages = new AtomicInteger(0);
-
-    private boolean finished = false;
+public class TestVehicle2 {
+    private static AtomicInteger errorImages = new AtomicInteger(0);
+    private static CloseableHttpClient httpclient = HttpClients.createDefault();
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        new TestVehicle().start(args);
-    }
-
-    public void start(String[] args) throws InterruptedException {
         Map<String, String> params = parseParams(args);
-        url = params.get("url");
-        nThread = params.get("thread") == null ? null : Integer.valueOf(params.get("thread"));
-        picDir = params.get("picDir");
-        outputDir = params.get("outputDir");
-        sendName = Boolean.valueOf(Optional.ofNullable(params.get("sendName")).orElse("false"));
-        type = params.get("type");
-        loop = Integer.valueOf(Optional.ofNullable(params.get("loop")).orElse("1"));
+        String url = params.get("url");
+        Integer nThread = params.get("thread") == null ? null : Integer.valueOf(params.get("thread"));
+        String picDir = params.get("picDir");
+        String outputDir = params.get("outputDir");
+        Boolean sendName = Boolean.valueOf(Optional.ofNullable(params.get("sendName")).orElse("false"));
+        String type = params.get("type");
 
+        int loop = Integer.valueOf(Optional.ofNullable(params.get("loop")).orElse("1"));
         if (url == null) {
             System.out.println("必须输入url");
             printUsage();
@@ -90,7 +70,7 @@ public class TestVehicle {
             return;
         }
         System.out.println(params);
-        outputFilePath = outputDir == null ? null : new File(outputDir);
+        final File outputFilePath = outputDir == null ? null : new File(outputDir);
         if (outputFilePath != null) {
             outputFilePath.mkdirs();
         }
@@ -99,6 +79,12 @@ public class TestVehicle {
             return;
         }
 
+//        File[] files = new File(picDir).listFiles(new FilenameFilter() {
+//            @Override
+//            public boolean accept(File dir, String name) {
+//                return name.endsWith("jpg");
+//            }
+//        });
         List<File> files = listFilesRecursively(new File(picDir));
 
         if (files == null || files.size() == 0) {
@@ -106,68 +92,19 @@ public class TestVehicle {
         }
 
         errorImages.set(0);
-
+        long totalImages = 0L;
+        AtomicInteger successImages = new AtomicInteger(0);
         Date startTime = new Date();
 
-        ExecutorService es = Executors.newFixedThreadPool(nThread + 1);
+        ExecutorService es = Executors.newFixedThreadPool(nThread);
         System.out.println("正在执行，请稍后...");
-
-        es.execute(() -> {
-            produceImage(files, loop);
-        });
-
-        for (int i = 0; i < nThread; i++) {
-            es.execute(() -> {
-                consumeImage();
-            });
-        }
-
-        es.shutdown();
-        while (!es.awaitTermination(1, TimeUnit.SECONDS)) {
-        }
-        System.out.println("执行完成");
-
-        Date endTime = new Date();
-
-        /*
-         * print result
-         */
-        long elapseTime = endTime.getTime() - startTime.getTime();
-        long imagesPerSec = totalImages * 1000 / elapseTime;
-        long successPerSec = successImages.get() * 1000 / elapseTime;
-        System.out.println("开始时间:       " + DateFormatUtils.format(startTime, "yyyy-MM-dd HH:mm:ss"));
-        System.out.println("结束时间:       " + DateFormatUtils.format(endTime, "yyyy-MM-dd HH:mm:ss"));
-        System.out.println("经过时间:       " + elapseTime + "毫秒");
-        System.out.println("总图片数量:      " + totalImages);
-        System.out.println("错误图片数量:      " + errorImages.get());
-        System.out.println("每秒处理图片:     " + imagesPerSec);
-        System.out.println("成功返回结果数量:   " + successImages.get());
-        System.out.println("每秒成功处理图片:   " + successPerSec);
-    }
-
-    private void produceImage(List<File> files, int loop) {
-        for (int i = 0; i < loop; i++) {
-            for (int j = 0; j < files.size(); j++) {
-                File f = files.get(j);
-                try {
-                    while (!filesQueue.offer(new FileWrap(f, i), 1, TimeUnit.SECONDS)) {
-                    }
-                    totalImages += 1;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        finished = true;
-    }
-
-    private void consumeImage() {
-        while (true) {
-            try {
-                FileWrap fw = filesQueue.poll(1, TimeUnit.SECONDS);
-                if (fw != null) {
-                    File f = fw.file;
-                    int loopIndex = fw.loopIndex;
+        for (int t = 0; t < loop; t++) {
+            for (int i = 0; i < files.size(); i++) {
+                totalImages++;
+                File f = files.get(i);
+                int cur = t;
+                es.execute(() -> {
+//                    System.out.println("sending file " + f.getName());
                     try {
                         Map<String, Object> map = new HashMap<>();
                         map.put("GCXH", "111111");
@@ -200,10 +137,7 @@ public class TestVehicle {
                             System.out.println("error image:" + f.getName());
                         }
                         if (outputFilePath != null) {
-                            try (OutputStream fout = new FileOutputStream(outputFilePath.getAbsolutePath() + File.separator + f.getName() + "_" + loopIndex + ".json")) {
-                                if (response == null) {
-                                    response = "no response message";
-                                }
+                            try (OutputStream fout = new FileOutputStream(outputFilePath.getAbsolutePath() + File.separator + f.getName() + "_" + cur + ".json")) {
                                 fout.write(response.getBytes("UTF-8"));
                             } catch (Exception ex) {
                                 ex.printStackTrace();
@@ -214,18 +148,33 @@ public class TestVehicle {
                         System.out.println("error image:" + f.getName());
                         e.printStackTrace();
                     }
-                } else {
-                    if (finished) {
-                        return;
-                    }
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                });
             }
         }
+        es.shutdown();
+        while (!es.awaitTermination(1, TimeUnit.SECONDS)) {
+        }
+        System.out.println("执行完成");
+
+        Date endTime = new Date();
+
+        /*
+         * print result
+         */
+        long elapseTime = endTime.getTime() - startTime.getTime();
+        long imagesPerSec = totalImages * 1000 / elapseTime;
+        long successPerSec = successImages.get() * 1000 / elapseTime;
+        System.out.println("开始时间:       " + DateFormatUtils.format(startTime, "yyyy-MM-dd HH:mm:ss"));
+        System.out.println("结束时间:       " + DateFormatUtils.format(endTime, "yyyy-MM-dd HH:mm:ss"));
+        System.out.println("经过时间:       " + elapseTime + "毫秒");
+        System.out.println("总图片数量:      " + totalImages);
+        System.out.println("错误图片数量:      " + errorImages.get());
+        System.out.println("每秒处理图片:     " + imagesPerSec);
+        System.out.println("成功返回结果数量:   " + successImages.get());
+        System.out.println("每秒成功处理图片:   " + successPerSec);
     }
 
-    private String postFile(String url, Map<String, Object> data) throws IOException {
+    private static String postFile(String url, Map<String, Object> data) throws IOException {
         HttpPost post = new HttpPost(url);
         try {
             post.addHeader("Connection", "close");
@@ -248,7 +197,7 @@ public class TestVehicle {
         }
     }
 
-    private boolean isSuccessRequest(String response) {
+    private static boolean isSuccessRequest(String response) {
         try {
             JSONObject json = JSONUtil.parseObj(response);
             Integer code = json.getInt("CODE");
@@ -262,7 +211,7 @@ public class TestVehicle {
         }
     }
 
-    private List<File> listFilesRecursively(File dir) {
+    private static List<File> listFilesRecursively(File dir) {
         List<File> fileList = new ArrayList<>();
         File[] files = dir.listFiles(pathname -> {
             if (pathname.isDirectory()) {
@@ -284,7 +233,7 @@ public class TestVehicle {
         return fileList;
     }
 
-    private void printUsage() {
+    private static void printUsage() {
         StringBuilder sb = new StringBuilder();
         sb.append("Usage:   java -cp ./* com.ghh.vehicle.test.TestVehicle -url=http://localhost:8080/detect -thread=3 -picDir=/pic -outputDir=/output -loop=1 -sendName=true -type=file");
         sb.append("\nurl:           必须，接口地址");
@@ -298,7 +247,7 @@ public class TestVehicle {
         System.out.println(sb);
     }
 
-    private Map<String, String> parseParams(String[] args) {
+    private static Map<String, String> parseParams(String[] args) {
         Map<String, String> params = new HashMap<>();
         if (args != null) {
             Pattern p = Pattern.compile("^-(.+?)=(.*)$");
@@ -314,14 +263,5 @@ public class TestVehicle {
             }
         }
         return params;
-    }
-
-    private static class FileWrap {
-        File file;
-        int loopIndex;
-        public FileWrap(File file, int loopIndex) {
-            this.file = file;
-            this.loopIndex = loopIndex;
-        }
     }
 }
