@@ -1,17 +1,23 @@
 package com.ghh.vehicle.test;
 
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
 import java.io.File;
@@ -38,8 +44,8 @@ import java.util.regex.Pattern;
  */
 public class TestVehicle {
     private AtomicInteger errorImages = new AtomicInteger(0);
-    private CloseableHttpClient httpclient = HttpClients.createDefault();
-    private LinkedBlockingQueue<FileWrap> filesQueue = new LinkedBlockingQueue<>(1000);
+    private CloseableHttpClient httpclient = null;
+    private LinkedBlockingQueue<FileWrap> filesQueue = new LinkedBlockingQueue<>(5000);
 
     private boolean sendName = false;
     private String url;
@@ -55,7 +61,15 @@ public class TestVehicle {
 
     private boolean finished = false;
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public TestVehicle() {
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(200);
+        connectionManager.setDefaultMaxPerRoute(20);
+
+        httpclient = HttpClients.custom().setConnectionManager(connectionManager).build();
+    }
+
+    public static void main(String[] args) throws InterruptedException {
         new TestVehicle().start(args);
     }
 
@@ -184,11 +198,12 @@ public class TestVehicle {
                         String response = null;
                         if ("file".equals(type)) {
                             map.put("TPWJ", f);
-//                            response = postFile(url, map);
-                            response = HttpUtil.post(url, map);
+                            response = postFile(url, map);//postFile(url, map);
+//                            response = HttpUtil.post(url, map);
                         } else {
                             map.put("TPXX", Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(f)));
-                            response = HttpUtil.post(url, map);
+                            response = postString(url, map);
+//                            response = HttpUtil.post(url, map);
                         }
                         map.clear();
                         map = null;
@@ -225,10 +240,27 @@ public class TestVehicle {
         }
     }
 
+    private String hutoolPost(String url, Map<String, Object> data) {
+        HttpRequest request = null;
+        HttpResponse response = null;
+        try {
+            request = HttpUtil.createPost(url).form(data);
+            response = request.execute();
+            return response.body();
+        } finally {
+//            if (request != null) {
+//                request.getConnection().disconnect();
+//            }
+            if (response != null) {
+                response.close();
+            }
+        }
+    }
+
     private String postFile(String url, Map<String, Object> data) throws IOException {
         HttpPost post = new HttpPost(url);
         try {
-            post.addHeader("Connection", "close");
+//            post.addHeader("Connection", "close");
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
             builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
             for (Map.Entry<String, Object> entry : data.entrySet()) {
@@ -244,9 +276,26 @@ public class TestVehicle {
             CloseableHttpResponse response = httpclient.execute(post);
             return EntityUtils.toString(response.getEntity());
         } finally {
-            post.releaseConnection();
+//            post.releaseConnection();
         }
     }
+
+    private String postString(String url, Map<String, Object> data) throws IOException {
+        HttpPost post = new HttpPost(url);
+        try {
+//            post.addHeader("Connection", "close");
+            List<BasicNameValuePair> pair = new ArrayList<>();
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                pair.add(new BasicNameValuePair(entry.getKey(), String.valueOf(entry.getValue())));
+            }
+            post.setEntity(new UrlEncodedFormEntity(pair));
+            CloseableHttpResponse response = httpclient.execute(post);
+            return EntityUtils.toString(response.getEntity());
+        } finally {
+//            post.releaseConnection();
+        }
+    }
+
 
     private boolean isSuccessRequest(String response) {
         try {
